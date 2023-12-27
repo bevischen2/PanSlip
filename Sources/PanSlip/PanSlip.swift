@@ -7,10 +7,11 @@ public class PanSlip<Base> {
     }
 }
 
-public protocol PanSlipCompatible: class {
+public protocol PanSlipCompatible: AnyObject {
     associatedtype PanSlipCompatibleType
     var ps: PanSlipCompatibleType { get }
 }
+
 public extension PanSlipCompatible {
     var ps: PanSlip<Self> {
         return PanSlip(self)

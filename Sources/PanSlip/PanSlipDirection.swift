@@ -1,6 +1,6 @@
 public enum PanSlipDirection: CaseIterable {
     case leftToRight
-    case righTotLeft
+    case rightToLeft
     case topToBottom
     case bottomToTop
 }

@@ -27,7 +27,7 @@ extension PanSlipAnimator: UIViewControllerAnimatedTransitioning {
         switch direction {
         case .leftToRight:
             point = CGPoint(x: screenBounds.width, y: 0)
-        case .righTotLeft:
+        case .rightToLeft:
             point = CGPoint(x: -screenBounds.width, y: 0)
         case .topToBottom:
             point = CGPoint(x: 0, y: screenBounds.height)

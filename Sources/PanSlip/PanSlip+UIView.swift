@@ -68,7 +68,7 @@ extension PanSlip where Base: UIView {
             switch slipDirection {
             case .leftToRight:
                 base.frame.origin.x = base.bounds.width
-            case .righTotLeft:
+            case .rightToLeft:
                 base.frame.origin.x = -base.bounds.width
             case .topToBottom:
                 base.frame.origin.y = base.bounds.height
@@ -149,7 +149,7 @@ private class PanSlipViewProxy: NSObject {
         switch slipDirection {
         case .leftToRight:
             movementPercent = translation.x / size.width
-        case .righTotLeft:
+        case .rightToLeft:
             movementPercent = -(translation.x / size.width)
         case .topToBottom:
             movementPercent = translation.y / size.height
@@ -164,7 +164,7 @@ private class PanSlipViewProxy: NSObject {
         case .changed:
             guard progress > 0 else {return}
             switch slipDirection {
-            case .leftToRight, .righTotLeft:
+            case .leftToRight, .rightToLeft:
                 view.frame.origin.x = translation.x
             case .topToBottom, .bottomToTop:
                 view.frame.origin.y = translation.y

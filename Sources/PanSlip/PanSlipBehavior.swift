@@ -1,6 +1,6 @@
 import UIKit
 
-public protocol PanSlipBehavior: class {
+public protocol PanSlipBehavior: AnyObject {
     var percentThreshold: CGFloat? { get }
 }
 

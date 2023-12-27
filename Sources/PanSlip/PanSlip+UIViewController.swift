@@ -49,6 +49,23 @@ extension PanSlip where Base: UIViewController {
         }
     }
     
+    /// Enable edge pan slip with the specified configuration.
+    /// - Parameters:
+    ///   - slipDirection: The direction in which the pan slip should occur.
+    ///   - slipCompletion: A closure to be executed upon completion of the pan slip.
+    public func enableEdge(slipDirection: PanSlipDirection, slipCompletion: (() -> Void)? = nil) {
+        self.slipDirection = slipDirection
+        self.slipCompletion = slipCompletion
+        
+        if viewControllerProxy == nil {
+            viewControllerProxy = PanSlipViewControllerProxy(viewController: base,
+                                                             useEdgePanGesture: true,
+                                                             slipDirection: slipDirection,
+                                                             slipCompletion: slipCompletion)
+            viewControllerProxy?.configure()
+        }
+    }
+    
     public func disable() {
         slipDirection = nil
         slipCompletion = nil
@@ -70,6 +87,15 @@ extension PanSlip where Base: UIViewController {
         viewControllerProxy?.interactiveTransition.finish()
     }
     
+    /// Call this method in your view controller containing a scroll view to configure pan gestures and determine which pan gesture will be enabled.
+    /// - Parameters:
+    ///   - gesture: The pan gesture recognizer to configure.
+    ///   - shouldBeginHandler: A closure that returns a Boolean indicating whether the gesture should begin.
+    public func disableSlipConflicts(with gesture: UIPanGestureRecognizer, shouldBeginHandler handler: (()->Bool)?) {
+        guard let viewControllerProxy else { return }
+        viewControllerProxy.disablePanGestureConflicts(with: gesture, shouldBeginHandler: handler)
+    }
+
 }
 
 // MARK: - PanSlipViewControllerProxy
@@ -82,9 +108,32 @@ private class PanSlipViewControllerProxy: NSObject {
     
     private unowned let viewController: UIViewController
     private var slipDirection: PanSlipDirection?
+    private var useEdgePanGesture: Bool = false
     private var slipCompletion: (() -> Void)?
+    private var slipShouldBeginHandler: (() -> Bool)?
     
-    private lazy var panGesture: UIPanGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(panGesture(_:)))
+    var panGesture: UIPanGestureRecognizer { _panGesture }
+    private lazy var _panGesture: UIPanGestureRecognizer = {
+        guard useEdgePanGesture, let slipDirection else {
+            return UIPanGestureRecognizer(target: self, action: #selector(panGesture(_:)))
+        }
+        
+        var panGesture: UIScreenEdgePanGestureRecognizer = .init(target: self, action: #selector(panGesture(_:)))
+        
+        switch slipDirection {
+        case .leftToRight:
+            panGesture.edges = .left
+        case .rightToLeft:
+            panGesture.edges = .right
+        case .topToBottom:
+            panGesture.edges = .top
+        case .bottomToTop:
+            panGesture.edges = .bottom
+        }
+        
+        return panGesture
+    }()
+    
     
     // MARK: - Con(De)structor
     
@@ -95,6 +144,17 @@ private class PanSlipViewControllerProxy: NSObject {
         self.slipDirection = slipDirection
         self.slipCompletion = slipCompletion
         viewController.transitioningDelegate = self
+    }
+    
+    /// Convenience initializer to create a PanSlipViewController with additional configuration options.
+    /// - Parameters:
+    ///   - viewController: The main view controller to be embedded.
+    ///   - useEdgePanGesture: A flag indicating whether to use UIScreenEdgePanGestureRecognizer.
+    ///   - slipDirection: The direction in which the pan slip should occur.
+    ///   - slipCompletion: A closure to be executed upon completion of the pan slip.
+    convenience init(viewController: UIViewController, useEdgePanGesture: Bool, slipDirection: PanSlipDirection, slipCompletion: (() -> Void)?) {
+        self.init(viewController: viewController, slipDirection: slipDirection, slipCompletion: slipCompletion)
+        self.useEdgePanGesture = useEdgePanGesture
     }
     
     // MARK: - Internal methods
@@ -108,6 +168,16 @@ private class PanSlipViewControllerProxy: NSObject {
         viewController.view.removeGestureRecognizer(panGesture)
     }
     
+    /// Configure pan gestures to avoid conflicts and set a handler to determine if the slip should begin.
+    /// - Parameters:
+    ///   - gesture: The pan gesture recognizer to configure.
+    ///   - shouldBeginHandler: A closure that returns a Boolean indicating whether the slip should begin.
+    func disablePanGestureConflicts(with gesture: UIPanGestureRecognizer, shouldBeginHandler handler: (()->Bool)?) {
+        panGesture.delegate = self
+        gesture.require(toFail: panGesture)
+        slipShouldBeginHandler = handler
+    }
+    
     // MARK: - Private selector
     
     @objc private func panGesture(_ sender: UIPanGestureRecognizer) {
@@ -119,7 +189,7 @@ private class PanSlipViewControllerProxy: NSObject {
         switch slipDirection {
         case .leftToRight:
             movementPercent = translation.x / size.width
-        case .righTotLeft:
+        case .rightToLeft:
             movementPercent = -(translation.x / size.width)
         case .topToBottom:
             movementPercent = translation.y / size.height
@@ -168,4 +238,13 @@ extension PanSlipViewControllerProxy: UIViewControllerTransitioningDelegate {
         return interactiveTransition.hasStarted ? interactiveTransition : nil
     }
     
+}
+
+// MARK: - UIGestureRecognizerDelegate
+
+extension PanSlipViewControllerProxy: UIGestureRecognizerDelegate {
+    
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        (slipShouldBeginHandler != nil) ? slipShouldBeginHandler!() : false
+    }
 }
